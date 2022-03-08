@@ -1,0 +1,10 @@
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: tr
+  namespace: tekton-trusted-resources-test
+spec:
+  taskSpec:
+    steps:
+      - image: ubuntu
+        name: echo
