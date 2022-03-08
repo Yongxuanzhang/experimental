@@ -26,10 +26,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	imgname "github.com/google/go-containerregistry/pkg/name"
-	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	cosignsignature "github.com/sigstore/cosign/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/kms"
@@ -48,7 +46,7 @@ import (
 const (
 	secretPath          = "/etc/signing-secrets/cosign.pub"
 	signingConfigMap    = "config-trusted-resources"
-	signatureAnnotation = "tekton.dev/signature"
+	SignatureAnnotation = "tekton.dev/signature"
 	kmsAnnotation       = "tekton.dev/kms"
 )
 
@@ -99,11 +97,11 @@ func (tr *TrustedTaskRun) verifyTask(
 		return apis.ErrMissingField("annotations")
 	}
 
-	if tr.ObjectMeta.Annotations[signatureAnnotation] == "" {
-		return apis.ErrMissingField(fmt.Sprintf("annotations[%s]", signatureAnnotation))
+	if tr.ObjectMeta.Annotations[SignatureAnnotation] == "" {
+		return apis.ErrMissingField(fmt.Sprintf("annotations[%s]", SignatureAnnotation))
 	}
 
-	signature, err := base64.StdEncoding.DecodeString(tr.ObjectMeta.Annotations[signatureAnnotation])
+	signature, err := base64.StdEncoding.DecodeString(tr.ObjectMeta.Annotations[SignatureAnnotation])
 	if err != nil {
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
@@ -211,35 +209,17 @@ func verifyTaskOCIBundle(
 		return apis.ErrGeneric(err.Error()).ViaKey(bundle)
 	}
 
-	digest, err := digest(ctx, bundle, kc)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*60)
+	defer cancel()
+
+	digest, err := Digest(ctx, bundle, remote.WithAuthFromKeychain(kc), remote.WithContext(timeoutCtx))
 	if err != nil {
 		return apis.ErrGeneric(err.Error()).ViaKey(bundle)
 	}
 
-	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader([]byte(digest))); err != nil {
+	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader([]byte(digest.String()))); err != nil {
 		return apis.ErrGeneric(err.Error()).ViaKey(bundle)
 	}
 
 	return nil
-}
-
-func digest(ctx context.Context, imageReference string, keychain authn.Keychain) (string, error) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*60)
-	defer cancel()
-
-	imgRef, err := imgname.ParseReference(imageReference)
-	if err != nil {
-		return "", err
-	}
-
-	img, err := ociremote.Image(imgRef, ociremote.WithAuthFromKeychain(keychain), ociremote.WithContext(timeoutCtx))
-	if err != nil {
-		return "", err
-	}
-
-	dgst, err := img.Digest()
-	if err != nil {
-		return "", err
-	}
-	return dgst.String(), nil
 }

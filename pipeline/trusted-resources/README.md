@@ -23,7 +23,12 @@ Generate cosign key pair
 cosign generate-key-pair
 ```
 
-Generate signed files will be added in future PR.
+Prepare signed files
+```bash
+# This is a demo of how to generate signed files.
+go run etc/signing.go -pw=1234 -pk=cosign.key -tr=examples/1-test-taskrun.yaml
+# go run etc/signing.go -pw=1234 -pk=cosign.key -tr=examples/3-test-taskrun-taskref.yaml -ts=examples/test_task.yaml
+```
 
 Then install the new admission webhook:
 ```bash
@@ -41,7 +46,7 @@ ko apply -f config/
 Examples:
 ```bash
 # Test API taskrun
-ko apply -f examples/1-test-taskrun.yaml
+ko apply -f examples/1-test-taskrun-signed.yaml
 
 # Test OCI Bundle
 # add this secret to controller's service account

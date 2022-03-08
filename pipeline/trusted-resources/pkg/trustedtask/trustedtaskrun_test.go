@@ -17,9 +17,7 @@ limitations under the License.
 package trustedtask
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"net/http/httptest"
 	"net/url"
@@ -28,10 +26,9 @@ import (
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	imgname "github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
-	v1types "github.com/google/go-containerregistry/pkg/v1"
+	typesv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/pkg/cosign"
 	cosignsignature "github.com/sigstore/cosign/pkg/signature"
@@ -48,7 +45,6 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/system"
-	"knative.dev/pkg/webhook/json"
 )
 
 const (
@@ -144,7 +140,10 @@ func TestVerifyResources_TaskSpec(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: tr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations["tekton.dev/signature"] = signTaskSpec(t, signer, tr.Spec.TaskSpec)
+	signed.Annotations["tekton.dev/signature"], err = SignTaskSpec(signer, tr.Spec.TaskSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tampered := signed.DeepCopy()
 	tampered.Spec.TaskSpec = &tsTampered.Spec
@@ -221,7 +220,10 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: otr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations["tekton.dev/signature"] = signOCIBundle(t, signer, dig)
+	signed.Annotations["tekton.dev/signature"], err = SignRawPayload(signer, []byte(dig.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tampered := signed.DeepCopy()
 	tampered.Spec.TaskRef.Bundle = u.Host + "/task/" + tsTampered.Name
@@ -286,7 +288,11 @@ func TestVerifyResources_TaskRef(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
-	signed.Annotations["tekton.dev/signature"] = signTaskSpec(t, signer, &ts.Spec)
+
+	signed.Annotations["tekton.dev/signature"], err = SignTaskSpec(signer, &ts.Spec)
+	if err != nil {
+		t.Fatalf("Unexpected err %v", err)
+	}
 
 	tampered := signed.DeepCopy()
 	tampered.Spec.TaskRef.Name = tsTampered.Name
@@ -325,46 +331,50 @@ func TestVerifyTaskSpec(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	// get keys
-	sv, err := getSignerVerifier(t, pass(password))
+	sv, err := getSignerVerifier(password)
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
 
 	tcs := []struct {
-		name      string
-		taskSpec  *v1beta1.TaskSpec
-		signature string
-		wantErr   bool
-	}{
-		{
-			name:      "taskSpec Pass Verification",
-			taskSpec:  taskSpecTest,
-			signature: signTaskSpec(t, sv, taskSpecTest),
-			wantErr:   false,
-		},
-		{
-			name:      "taskSpec Fail Verification with empty signature",
-			taskSpec:  taskSpecTest,
-			signature: base64.StdEncoding.EncodeToString(nil),
-			wantErr:   true,
-		},
-		{
-			name:      "taskSpec Fail Verification with empty taskSpec",
-			taskSpec:  nil,
-			signature: signTaskSpec(t, sv, taskSpecTest),
-			wantErr:   true,
-		},
-		{
-			name:      "taskSpec Fail Verification with tampered taskSpec",
-			taskSpec:  taskSpecTestTampered,
-			signature: signTaskSpec(t, sv, taskSpecTest),
-			wantErr:   true,
-		},
+		name         string
+		taskSpec     *v1beta1.TaskSpec
+		hasSignature bool
+		wantErr      bool
+	}{{
+		name:         "taskSpec Pass Verification",
+		taskSpec:     taskSpecTest,
+		hasSignature: true,
+		wantErr:      false,
+	}, {
+		name:         "taskSpec Fail Verification with empty signature",
+		taskSpec:     taskSpecTest,
+		hasSignature: false,
+		wantErr:      true,
+	}, {
+		name:         "taskSpec Fail Verification with empty taskSpec",
+		taskSpec:     nil,
+		hasSignature: true,
+		wantErr:      true,
+	}, {
+		name:         "taskSpec Fail Verification with tampered taskSpec",
+		taskSpec:     taskSpecTestTampered,
+		hasSignature: true,
+		wantErr:      true,
+	},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			signature, err := base64.StdEncoding.DecodeString(tc.signature)
+			sig := ""
+			if tc.hasSignature {
+				sig, err = SignTaskSpec(sv, taskSpecTest)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			signature, err := base64.StdEncoding.DecodeString(sig)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -398,110 +408,56 @@ func TestVerifyTaskOCIBundle(t *testing.T) {
 	}
 
 	// Get signer
-	sv, err := getSignerVerifier(t, pass(password))
+	sv, err := getSignerVerifier(password)
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
 
 	tcs := []struct {
-		name      string
-		bundle    string
-		signature string
-		wantErr   bool
-	}{
-		{
-			name:      "OCIBundle Pass Verification",
-			bundle:    u.Host + "/task/" + ts.Name,
-			signature: signOCIBundle(t, sv, dig),
-			wantErr:   false,
-		},
-		{
-			name:      "OCIBundle Fail Verification with empty signature",
-			bundle:    u.Host + "/task/" + ts.Name,
-			signature: "",
-			wantErr:   true,
-		},
-		{
-			name:      "OCIBundle Fail Verification with empty Bundle",
-			bundle:    "",
-			signature: signOCIBundle(t, sv, dig),
-			wantErr:   true,
-		},
-		{
-			name:      "OCIBundle Fail Verification with tampered OCIBundle",
-			bundle:    u.Host + "/task/" + tsTampered.Name,
-			signature: signOCIBundle(t, sv, dig),
-			wantErr:   true,
-		},
+		name         string
+		bundle       string
+		hasSignature bool
+		wantErr      bool
+	}{{
+		name:         "OCIBundle Pass Verification",
+		bundle:       u.Host + "/task/" + ts.Name,
+		hasSignature: true,
+		wantErr:      false,
+	}, {
+		name:         "OCIBundle Fail Verification with empty signature",
+		bundle:       u.Host + "/task/" + ts.Name,
+		hasSignature: false,
+		wantErr:      true,
+	}, {
+		name:         "OCIBundle Fail Verification with empty Bundle",
+		bundle:       "",
+		hasSignature: true,
+		wantErr:      true,
+	}, {
+		name:         "OCIBundle Fail Verification with tampered OCIBundle",
+		bundle:       u.Host + "/task/" + tsTampered.Name,
+		hasSignature: true,
+		wantErr:      true,
+	},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			signature, err := base64.StdEncoding.DecodeString(tc.signature)
+			sig := ""
+			if tc.hasSignature {
+				sig, err = SignRawPayload(sv, []byte(dig.String()))
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			signature, err := base64.StdEncoding.DecodeString(sig)
 			if err != nil {
 				t.Fatal(err)
 			}
 			errs := verifyTaskOCIBundle(ctx, tc.bundle, sv, signature, k8sclient)
 			if (errs != nil) != tc.wantErr {
 				t.Errorf("verifyTaskOCIBundle() get err %v, wantErr %t", err, tc.wantErr)
-			}
-		})
-	}
-
-}
-
-func TestDigest(t *testing.T) {
-	ctx := context.Background()
-
-	k8sclient := fakek8s.NewSimpleClientset(sa)
-
-	// Create registry server
-	s := httptest.NewServer(registry.New())
-	defer s.Close()
-	u, _ := url.Parse(s.URL)
-
-	// Push OCI bundle
-	dig, err := pushOCIImage(t, u, ts)
-	t.Logf("Digest: %v", dig.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	kc, err := k8schain.New(ctx, k8sclient, k8schain.Options{
-		Namespace:          nameSpace,
-		ServiceAccountName: serviceAccount,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tcs := []struct {
-		name     string
-		imageRef string
-		wantErr  bool
-	}{
-		{
-			name:     "OCIBundle Pass Verification",
-			imageRef: u.Host + "/task/" + ts.Name,
-			wantErr:  false,
-		},
-		{
-			name:     "OCIBundle Fail Verification with empty signature",
-			imageRef: u.Host + "/task/" + tsTampered.Name,
-			wantErr:  true,
-		},
-		{
-			name:     "OCIBundle Fail Verification with empty Bundle",
-			imageRef: "",
-			wantErr:  true,
-		},
-	}
-
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err = digest(ctx, tc.imageRef, kc)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("digest() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -531,7 +487,7 @@ func getSignerFromFile(t *testing.T, ctx context.Context, k8sclient kubernetes.I
 	return signer, nil
 }
 
-func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (v1types.Hash, error) {
+func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash, error) {
 	t.Helper()
 	ref, err := remotetest.CreateImage(u.Host+"/task/"+task.Name, task)
 	if err != nil {
@@ -555,19 +511,6 @@ func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (v1types.Hash, e
 	return dig, nil
 }
 
-func getSignerVerifier(t *testing.T, pf cosign.PassFunc) (signature.SignerVerifier, error) {
-	t.Helper()
-	keys, err := cosign.GenerateKeyPair(pf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sv, err := cosign.LoadPrivateKey(keys.PrivateBytes, []byte(password))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return sv, nil
-}
-
 func generateKeyFile(t *testing.T, tmpDir string, pf cosign.PassFunc) (privFile, pubFile string) {
 	t.Helper()
 	keys, err := cosign.GenerateKeyPair(pf)
@@ -586,38 +529,4 @@ func generateKeyFile(t *testing.T, tmpDir string, pf cosign.PassFunc) (privFile,
 	}
 
 	return tmpPrivFile, tmpPubFile
-}
-
-func pass(s string) cosign.PassFunc {
-	return func(_ bool) ([]byte, error) {
-		return []byte(s), nil
-	}
-}
-
-func signTaskSpec(t *testing.T, signer signature.Signer, taskspec *v1beta1.TaskSpec) string {
-	t.Helper()
-	tsSpec, err := json.Marshal(taskspec)
-	if err != nil {
-		t.Fatalf("Unexpected err %v", err)
-	}
-
-	h := sha256.New()
-	h.Write(tsSpec)
-
-	return signRawPayload(t, signer, h.Sum(nil))
-}
-
-func signOCIBundle(t *testing.T, signer signature.Signer, digest v1types.Hash) string {
-	t.Helper()
-	return signRawPayload(t, signer, []byte(digest.String()))
-}
-
-func signRawPayload(t *testing.T, signer signature.Signer, rawPayload []byte) string {
-	t.Helper()
-	signature, err := signer.SignMessage(bytes.NewReader(rawPayload))
-	if err != nil {
-		t.Fatalf("Unexpected err %v", err)
-	}
-	signatureEncoding := base64.StdEncoding.EncodeToString(signature)
-	return signatureEncoding
 }
