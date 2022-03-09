@@ -61,7 +61,7 @@ func TestSignTaskSpec(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err = SignTaskSpec(tc.signer, taskSpecTest); (err != nil) != tc.wantErr {
+			if _, err = Sign(tc.signer, taskSpecTest); (err != nil) != tc.wantErr {
 				t.Errorf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})

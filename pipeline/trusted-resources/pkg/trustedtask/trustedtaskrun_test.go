@@ -117,9 +117,8 @@ func init() {
 	os.Setenv("WEBHOOK_SERVICEACCOUNT_NAME", serviceAccount)
 }
 
-func TestVerifyResources_TaskSpec(t *testing.T) {
+func TestVerifyResources_TaskRun(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-
 	k8sclient := fakek8s.NewSimpleClientset()
 	tektonClient := faketekton.NewSimpleClientset(ts, tsTampered)
 
@@ -140,7 +139,7 @@ func TestVerifyResources_TaskSpec(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: tr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations["tekton.dev/signature"], err = SignTaskSpec(signer, tr.Spec.TaskSpec)
+	signed.Annotations["tekton.dev/signature"], err = Sign(signer, tr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +288,7 @@ func TestVerifyResources_TaskRef(t *testing.T) {
 		t.Fatalf("Unexpected err %v", err)
 	}
 
-	signed.Annotations["tekton.dev/signature"], err = SignTaskSpec(signer, &ts.Spec)
+	signed.Annotations["tekton.dev/signature"], err = Sign(signer, &ts.Spec)
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
@@ -368,7 +367,7 @@ func TestVerifyTaskSpec(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sig := ""
 			if tc.hasSignature {
-				sig, err = SignTaskSpec(sv, taskSpecTest)
+				sig, err = Sign(sv, taskSpecTest)
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -28,14 +28,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"knative.dev/pkg/webhook/json"
 )
 
 // TODO: change taskspec to inferface{} in next pr
 // Sign taskspec and return encoded signature
-func SignTaskSpec(signer signature.Signer, taskspec *v1beta1.TaskSpec) (string, error) {
-	b, err := json.Marshal(taskspec)
+func Sign(signer signature.Signer, object interface{}) (string, error) {
+	b, err := json.Marshal(object)
 	if err != nil {
 		return "", err
 	}

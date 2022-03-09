@@ -70,8 +70,6 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 		return nil
 	}
 
-	cp := copyTrustedTaskRun(tr)
-
 	k8sclient := kubeclient.Get(ctx)
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -81,7 +79,7 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 	if err != nil {
 		return apis.ErrGeneric(err.Error())
 	}
-	if errs := errs.Also(cp.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
+	if errs := errs.Also(tr.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
 		return errs
 	}
 	return nil
@@ -112,19 +110,28 @@ func (tr *TrustedTaskRun) verifyTask(
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
 
+	tr.ObjectMeta.Annotations[SignatureAnnotation] = ""
+
 	verifier, err := verifier(ctx, tr.ObjectMeta.Annotations, k8sclient)
 	if err != nil {
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
 
+	logger.Info("Verifying TaskRun")
+	if err := verifyTaskSpec(ctx, tr, verifier, signature); err != nil {
+		return apis.ErrGeneric(err.Error(), "taskrun")
+	}
+
+	/*
 	if tr.Spec.TaskSpec != nil {
 		logger.Info("Verifying TaskSpec")
 		if err := verifyTaskSpec(ctx, tr.Spec.TaskSpec, verifier, signature); err != nil {
 			return apis.ErrGeneric(err.Error(), "spec")
 		}
 		return nil
-	}
+	}*/
 
+	/*
 	if tr.Spec.TaskRef != nil {
 		if tr.Spec.TaskRef.Bundle != "" {
 			logger.Info("Verifying OCI Bundle")
@@ -147,7 +154,7 @@ func (tr *TrustedTaskRun) verifyTask(
 			}
 			return nil
 		}
-	}
+	}*/
 
 	return nil
 }
@@ -176,7 +183,7 @@ func verifier(
 
 func verifyTaskSpec(
 	ctx context.Context,
-	taskspec *v1beta1.TaskSpec,
+	taskspec interface{},
 	verifier signature.Verifier,
 	signature []byte,
 ) (errs *apis.FieldError) {
@@ -232,6 +239,7 @@ func verifyTaskOCIBundle(
 
 func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun{
 	cp := TrustedTaskRun{}
+	cp.TypeMeta=tr.TypeMeta
 	cp.SetName(tr.Name)
 	cp.SetGenerateName(tr.GenerateName)
 	cp.SetNamespace(tr.Namespace)
