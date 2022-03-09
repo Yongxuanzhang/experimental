@@ -70,6 +70,8 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 		return nil
 	}
 
+	cp := copyTrustedTaskRun(tr)
+
 	k8sclient := kubeclient.Get(ctx)
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -79,7 +81,7 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 	if err != nil {
 		return apis.ErrGeneric(err.Error())
 	}
-	if errs := errs.Also(tr.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
+	if errs := errs.Also(cp.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
 		return errs
 	}
 	return nil
@@ -226,4 +228,21 @@ func verifyTaskOCIBundle(
 	}
 
 	return nil
+}
+
+func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun{
+	cp := TrustedTaskRun{}
+	cp.SetName(tr.Name)
+	cp.SetGenerateName(tr.GenerateName)
+	cp.SetNamespace(tr.Namespace)
+	cp.Labels = make(map[string]string)
+	for k,v := range tr.Labels {
+		cp.Labels[k] = v
+	}
+	cp.Annotations = make(map[string]string)
+	for k,v := range tr.Annotations {
+		cp.Annotations[k] = v
+	}
+	cp.Spec = *tr.Spec.DeepCopy()
+	return cp
 }
