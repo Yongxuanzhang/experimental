@@ -24,9 +24,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"reflect"
 	"time"
-	"unsafe"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -66,43 +64,11 @@ var (
 	_ apis.Validatable = (*TrustedTaskRun)(nil)
 )
 
-func printContextInternals(ctx interface{}, inner bool) {
-	contextValues := reflect.ValueOf(ctx).Elem()
-	contextKeys := reflect.TypeOf(ctx).Elem()
-
-	if !inner {
-			fmt.Printf("\nFields for %s.%s\n", contextKeys.PkgPath(), contextKeys.Name())
-	}
-
-	if contextKeys.Kind() == reflect.Struct {
-			for i := 0; i < contextValues.NumField(); i++ {
-					reflectValue := contextValues.Field(i)
-					reflectValue = reflect.NewAt(reflectValue.Type(), unsafe.Pointer(reflectValue.UnsafeAddr())).Elem()
-
-					reflectField := contextKeys.Field(i)
-
-					if reflectField.Name == "Context" {
-							printContextInternals(reflectValue.Interface(), true)
-					} else {
-							fmt.Printf("field name: %+v\n", reflectField.Name)
-							fmt.Printf("value: %+v\n", reflectValue.Interface())
-					}
-			}
-	} else {
-			fmt.Printf("context is empty (int)\n")
-	}
-}
-
 // Validate the TaskRun is tampered or not.
 func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if !apis.IsInCreate(ctx){
 		return nil
 	}
-	fmt.Println("!!!!apis.IsInCreate(ctx)", apis.IsInCreate(ctx))
-	fmt.Println("!!!!ctx", ctx)
-	fmt.Println("!!!!tr", tr)
-	fmt.Println("!!!!tr.GroupVersionKind().Group", tr.GroupVersionKind().Group)
-	fmt.Println("!!!!tr.GroupVersionKind().Version", tr.GroupVersionKind().Version)
 
 	k8sclient := kubeclient.Get(ctx)
 	config, err := rest.InClusterConfig()
