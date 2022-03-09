@@ -95,6 +95,10 @@ func printContextInternals(ctx interface{}, inner bool) {
 
 // Validate the TaskRun is tampered or not.
 func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) {
+	if !apis.IsInCreate(ctx){
+		return nil
+	}
+	fmt.Println("!!!!apis.IsInCreate(ctx)", apis.IsInCreate(ctx))
 	fmt.Println("!!!!ctx", ctx)
 	fmt.Println("!!!!tr", tr)
 	fmt.Println("!!!!tr.GroupVersionKind().Group", tr.GroupVersionKind().Group)
