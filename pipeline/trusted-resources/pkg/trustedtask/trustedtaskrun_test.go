@@ -406,7 +406,7 @@ func TestVerifyTaskSpec(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs := verifyTaskSpec(ctx, tc.taskSpec, sv, signature)
+			errs := verify(ctx, tc.taskSpec, sv, signature)
 			if (errs != nil) != tc.wantErr {
 				t.Errorf("verifyTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}

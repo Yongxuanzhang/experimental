@@ -126,31 +126,11 @@ func (tr *TrustedTaskRun) verifyTask(
 	}
 
 	logger.Info("Verifying TaskRun")
-	if err := verifyTaskSpec(ctx, tr, verifier, signature); err != nil {
+	if err := verify(ctx, tr, verifier, signature); err != nil {
 		return apis.ErrGeneric(err.Error(), "taskrun")
 	}
 
-
-
-
-	/*
-	if tr.Spec.TaskSpec != nil {
-		logger.Info("Verifying TaskSpec")
-		if err := verifyTaskSpec(ctx, tr.Spec.TaskSpec, verifier, signature); err != nil {
-			return apis.ErrGeneric(err.Error(), "spec")
-		}
-		return nil
-	}*/
-
-
 	if tr.Spec.TaskRef != nil {
-		if tr.Spec.TaskRef.Bundle != "" {
-			logger.Info("Verifying OCI Bundle")
-			/*
-			if err := verifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, verifier, signature, k8sclient); err != nil {
-				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
-			}*/
-
 			serviceAccountName := os.Getenv("WEBHOOK_SERVICEACCOUNT_NAME")
 			if serviceAccountName == "" {
 				serviceAccountName = "tekton-verify-task-webhook"
@@ -160,6 +140,7 @@ func (tr *TrustedTaskRun) verifyTask(
 			if err != nil {
 				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
 			}
+
 			actualTask, err := getfunc(ctx, tr.Spec.TaskRef.Name)
 			if err != nil {
 				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
@@ -174,25 +155,7 @@ func (tr *TrustedTaskRun) verifyTask(
 			tt.Validate(ctx)
 
 			return nil
-		}
 
-
-
-
-		/*
-		ts, err := tektonClient.TektonV1beta1().Tasks(tr.Namespace).Get(ctx, tr.Spec.TaskRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return apis.ErrGeneric(err.Error(), "spec", "taskRef")
-		}
-		if ts.Name != "" {
-			logger.Info("Verifying TaskRef")
-			if err := verifyTaskSpec(ctx, &ts.Spec, verifier, signature); err != nil {
-				if err != nil {
-					return apis.ErrGeneric(err.Error(), "spec", "taskRef")
-				}
-			}
-			return nil
-		}*/
 	}
 
 	return nil
@@ -220,7 +183,7 @@ func verifier(
 	}
 }
 
-func verifyTaskSpec(
+func verify(
 	ctx context.Context,
 	taskspec interface{},
 	verifier signature.Verifier,
