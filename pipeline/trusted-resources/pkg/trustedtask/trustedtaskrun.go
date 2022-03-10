@@ -48,7 +48,6 @@ const (
 	secretPath          = "/etc/signing-secrets/cosign.pub"
 	signingConfigMap    = "config-trusted-resources"
 	SignatureAnnotation = "tekton.dev/signature"
-	TaskSignatureAnnotation = "tekton.dev/tasksignature"
 	kmsAnnotation       = "tekton.dev/kms"
 )
 
@@ -58,10 +57,6 @@ const (
 // TrustedTaskRun wraps the TaskRun and verify if it is tampered or not.
 type TrustedTaskRun struct {
 	v1beta1.TaskRun
-}
-
-type TrustedTask struct {
-	v1beta1.Task
 }
 
 // Verify that TrustedTaskRun adheres to the appropriate interfaces.
