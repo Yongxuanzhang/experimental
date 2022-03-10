@@ -60,6 +60,10 @@ type TrustedTaskRun struct {
 	v1beta1.TaskRun
 }
 
+type TrustedTask struct {
+	v1beta1.Task
+}
+
 // Verify that TrustedTaskRun adheres to the appropriate interfaces.
 var (
 	_ apis.Defaultable = (*TrustedTaskRun)(nil)
@@ -126,6 +130,9 @@ func (tr *TrustedTaskRun) verifyTask(
 		return apis.ErrGeneric(err.Error(), "taskrun")
 	}
 
+
+
+
 	/*
 	if tr.Spec.TaskSpec != nil {
 		logger.Info("Verifying TaskSpec")
@@ -158,6 +165,13 @@ func (tr *TrustedTaskRun) verifyTask(
 				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
 			}
 			fmt.Println(actualTask)
+
+			ts:=v1beta1.Task{}
+			tt:=TrustedTask{}
+			ts.Spec=actualTask.TaskSpec()
+			ts.ObjectMeta=actualTask.TaskMetadata()
+			tt.Task=ts
+			tt.Validate(ctx)
 
 			return nil
 		}
