@@ -140,7 +140,7 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: tr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, tr.Spec.TaskSpec)
+	signed.Annotations[SignatureAnnotation], err = Sign(signer, tr)
 	if err != nil {
 		t.Fatal(err)
 	}

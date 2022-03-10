@@ -59,7 +59,7 @@ func signTaskRunYaml(ctx context.Context, taskRunFile string, taskFile string, t
 
 	sig := ""
 	if tr.Spec.TaskSpec != nil {
-		sig, err = trustedtask.SignTaskSpec(s, tr.Spec.TaskSpec)
+		sig, err = trustedtask.Sign(s, tr.Spec.TaskSpec)
 		if err != nil {
 			return err
 		}
@@ -91,7 +91,7 @@ func signTaskRunYaml(ctx context.Context, taskRunFile string, taskFile string, t
 				return err
 			}
 
-			sig, err = trustedtask.SignTaskSpec(s, &ts.Spec)
+			sig, err = trustedtask.Sign(s, &ts.Spec)
 			if err != nil {
 				return err
 			}
