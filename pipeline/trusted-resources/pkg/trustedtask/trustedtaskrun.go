@@ -147,10 +147,7 @@ func (tr *TrustedTaskRun) verifyTask(
 			ts.Spec=actualTask.TaskSpec()
 			ts.ObjectMeta=actualTask.TaskMetadata()
 			tt.Task=ts
-			tt.Validate(ctx)
-
-			return nil
-
+			return tt.Validate(ctx)
 	}
 
 	return nil
