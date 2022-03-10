@@ -33,6 +33,7 @@ import (
 	"github.com/sigstore/cosign/pkg/cosign"
 	cosignsignature "github.com/sigstore/cosign/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	faketekton "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -44,6 +45,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
+	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 )
 
@@ -168,8 +170,8 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.taskRun.verifyTask(ctx, k8sclient, tektonClient)
-			if (err != nil) != tc.wantErr {
+			cp := copyTrustedTaskRun(tc.taskRun)
+			if err := cp.verifyTask(ctx, k8sclient, tektonClient); (err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
@@ -180,8 +182,31 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 func TestVerifyResources_OCIBundle(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
+	cfg := config.NewStore(logtesting.TestLogger(t))
+	cfg.OnConfigChanged(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-tekton-oci-bundles": "true",
+		},
+	})
+	ctx = cfg.ToContext(ctx)
+
 	k8sclient := fakek8s.NewSimpleClientset(sa)
 	tektonClient := faketekton.NewSimpleClientset(ts, tsTampered)
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: nameSpace,
+			Name:      "feature-flags",
+		},
+		Data: map[string]string{"enable-tekton-oci-bundles": "true"},
+	}
+
+
+	_, err := k8sclient.CoreV1().ConfigMaps(nameSpace).Create(ctx, cm, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Get Signer
 	signer, err := getSignerFromFile(t, ctx, k8sclient)
@@ -210,7 +235,7 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 		ObjectMeta: trObjectMeta,
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
-				Name:   "ts",
+				Name:   "test-task",
 				Bundle: u.Host + "/task/" + ts.Name,
 			},
 		},
@@ -220,6 +245,8 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 
 	signed := unsigned.DeepCopy()
 	signed.Annotations["tekton.dev/signature"], err = SignRawPayload(signer, []byte(dig.String()))
+
+	signed.Annotations["tekton.dev/signature"], err = Sign(signer, otr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,8 +275,8 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.taskRun.verifyTask(ctx, k8sclient, tektonClient)
-			if (err != nil) != tc.wantErr {
+			cp := copyTrustedTaskRun(tc.taskRun)
+			if err := cp.verifyTask(ctx, k8sclient, tektonClient);(err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})

@@ -30,7 +30,7 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestSignTaskSpec(t *testing.T) {
+func TestSign(t *testing.T) {
 	sv, err := getSignerVerifier(password)
 	if err != nil {
 		t.Errorf("failed to get signerverifier %v", err)

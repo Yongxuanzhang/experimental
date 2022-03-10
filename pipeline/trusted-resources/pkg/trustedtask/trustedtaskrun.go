@@ -33,6 +33,7 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature/kms"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -47,6 +48,7 @@ const (
 	secretPath          = "/etc/signing-secrets/cosign.pub"
 	signingConfigMap    = "config-trusted-resources"
 	SignatureAnnotation = "tekton.dev/signature"
+	TaskSignatureAnnotation = "tekton.dev/tasksignature"
 	kmsAnnotation       = "tekton.dev/kms"
 )
 
@@ -79,7 +81,9 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 	if err != nil {
 		return apis.ErrGeneric(err.Error())
 	}
-	if errs := errs.Also(tr.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
+
+	cp := copyTrustedTaskRun(tr)
+	if errs := errs.Also(cp.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
 		return errs
 	}
 	return nil
@@ -110,7 +114,7 @@ func (tr *TrustedTaskRun) verifyTask(
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
 
-	tr.ObjectMeta.Annotations[SignatureAnnotation] = ""
+	delete(tr.ObjectMeta.Annotations, SignatureAnnotation);
 
 	verifier, err := verifier(ctx, tr.ObjectMeta.Annotations, k8sclient)
 	if err != nil {
@@ -131,16 +135,37 @@ func (tr *TrustedTaskRun) verifyTask(
 		return nil
 	}*/
 
-	/*
+
 	if tr.Spec.TaskRef != nil {
 		if tr.Spec.TaskRef.Bundle != "" {
 			logger.Info("Verifying OCI Bundle")
+			/*
 			if err := verifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, verifier, signature, k8sclient); err != nil {
 				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
+			}*/
+
+			serviceAccountName := os.Getenv("WEBHOOK_SERVICEACCOUNT_NAME")
+			if serviceAccountName == "" {
+				serviceAccountName = "tekton-verify-task-webhook"
 			}
+
+			getfunc,err:=resources.GetTaskFunc(ctx,k8sclient,tektonClient,tr.Spec.TaskRef,tr.Namespace,serviceAccountName)
+			if err != nil {
+				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
+			}
+			actualTask, err := getfunc(ctx, tr.Spec.TaskRef.Name)
+			if err != nil {
+				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
+			}
+			fmt.Println(actualTask)
+
 			return nil
 		}
 
+
+
+
+		/*
 		ts, err := tektonClient.TektonV1beta1().Tasks(tr.Namespace).Get(ctx, tr.Spec.TaskRef.Name, metav1.GetOptions{})
 		if err != nil {
 			return apis.ErrGeneric(err.Error(), "spec", "taskRef")
@@ -153,8 +178,8 @@ func (tr *TrustedTaskRun) verifyTask(
 				}
 			}
 			return nil
-		}
-	}*/
+		}*/
+	}
 
 	return nil
 }
