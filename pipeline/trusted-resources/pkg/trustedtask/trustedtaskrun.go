@@ -48,7 +48,10 @@ const (
 	secretPath          = "/etc/signing-secrets/cosign.pub"
 	signingConfigMap    = "config-trusted-resources"
 	SignatureAnnotation = "tekton.dev/signature"
+<<<<<<< HEAD
 	TaskSignatureAnnotation = "tekton.dev/tasksignature"
+=======
+>>>>>>> signing-yaml
 	kmsAnnotation       = "tekton.dev/kms"
 )
 
@@ -275,6 +278,7 @@ func verifyTaskOCIBundle(
 
 	return nil
 }
+<<<<<<< HEAD
 
 func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun{
 	cp := TrustedTaskRun{}
@@ -293,3 +297,5 @@ func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun{
 	cp.Spec = *tr.Spec.DeepCopy()
 	return cp
 }
+=======
+>>>>>>> signing-yaml

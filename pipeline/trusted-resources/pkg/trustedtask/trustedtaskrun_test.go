@@ -30,7 +30,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/registry"
 	typesv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/sigstore/cosign/pkg/cosign"
 	cosignsignature "github.com/sigstore/cosign/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -141,7 +140,7 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: tr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations["tekton.dev/signature"], err = Sign(signer, tr)
+	signed.Annotations[SignatureAnnotation], err = Sign(signer, tr.Spec.TaskSpec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,9 +243,11 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: otr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations["tekton.dev/signature"], err = SignRawPayload(signer, []byte(dig.String()))
 
-	signed.Annotations["tekton.dev/signature"], err = Sign(signer, otr)
+	signed.Annotations[SignatureAnnotation], err = SignRawPayload(signer, []byte(dig.String()))
+
+	signed.Annotations[SignatureAnnotation], err = Sign(signer, otr)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +316,8 @@ func TestVerifyResources_TaskRef(t *testing.T) {
 		t.Fatalf("Unexpected err %v", err)
 	}
 
-	signed.Annotations["tekton.dev/signature"], err = Sign(signer, &ts.Spec)
+	signed.Annotations[SignatureAnnotation], err = Sign(signer, &ts.Spec)
+
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
@@ -494,7 +496,10 @@ func TestVerifyTaskOCIBundle(t *testing.T) {
 func getSignerFromFile(t *testing.T, ctx context.Context, k8sclient kubernetes.Interface) (signature.Signer, error) {
 	t.Helper()
 	tmpDir := t.TempDir()
-	privateKeyPath, _ := generateKeyFile(t, tmpDir, pass(password))
+	privateKeyPath, _, err := GenerateKeyFile(tmpDir, pass(password))
+	if err != nil {
+		t.Fatal(err)
+	}
 	signer, err := cosignsignature.SignerFromKeyRef(ctx, privateKeyPath, pass(password))
 	if err != nil {
 		t.Fatal(err)
@@ -535,24 +540,4 @@ func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash, e
 		t.Errorf("failed to fetch img manifest: %v", err)
 	}
 	return dig, nil
-}
-
-func generateKeyFile(t *testing.T, tmpDir string, pf cosign.PassFunc) (privFile, pubFile string) {
-	t.Helper()
-	keys, err := cosign.GenerateKeyPair(pf)
-	if err != nil {
-		t.Fatalf("failed to generate keypair: %v", err)
-	}
-
-	tmpPrivFile := filepath.Join(tmpDir, "cosign.key")
-	if err := os.WriteFile(tmpPrivFile, keys.PrivateBytes, 0666); err != nil {
-		t.Fatal(err)
-	}
-
-	tmpPubFile := filepath.Join(tmpDir, "cosign.pub")
-	if err := os.WriteFile(tmpPubFile, keys.PublicBytes, 0666); err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpPrivFile, tmpPubFile
 }

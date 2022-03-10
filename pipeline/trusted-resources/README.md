@@ -26,8 +26,8 @@ cosign generate-key-pair
 Prepare signed files
 ```bash
 # This is a demo of how to generate signed files.
-go run etc/signing.go -pw=1234 -pk=cosign.key -tr=examples/1-test-taskrun.yaml
-# go run etc/signing.go -pw=1234 -pk=cosign.key -tr=examples/3-test-taskrun-taskref.yaml -ts=examples/test_task.yaml
+go run cmd/sign/main.go -pk=cosign.key -tr=examples/1-test-taskrun.yaml -td=examples
+# go run cmd/sign/main.go -pk=cosign.key -tr=examples/3-test-taskrun-taskref.yaml -ts=examples/test_task.yaml -td=examples
 ```
 
 Then install the new admission webhook:
