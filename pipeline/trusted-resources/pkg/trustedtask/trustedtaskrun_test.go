@@ -118,7 +118,7 @@ func init() {
 	os.Setenv("WEBHOOK_SERVICEACCOUNT_NAME", serviceAccount)
 }
 
-func TestVerifyResources_TaskRun(t *testing.T) {
+func TestVerifyTaskRun_TaskRun(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 	k8sclient := fakek8s.NewSimpleClientset()
 	tektonClient := faketekton.NewSimpleClientset(ts, tsTampered)
@@ -170,7 +170,7 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			cp := copyTrustedTaskRun(tc.taskRun)
-			if err := cp.verifyTask(ctx, k8sclient, tektonClient); (err != nil) != tc.wantErr {
+			if err := cp.verifyTaskRun(ctx, k8sclient, tektonClient); (err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
@@ -178,7 +178,7 @@ func TestVerifyResources_TaskRun(t *testing.T) {
 
 }
 
-func TestVerifyResources_OCIBundle(t *testing.T) {
+func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	cfg := config.NewStore(logtesting.TestLogger(t))
@@ -277,7 +277,7 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			cp := copyTrustedTaskRun(tc.taskRun)
-			if err := cp.verifyTask(ctx, k8sclient, tektonClient);(err != nil) != tc.wantErr {
+			if err := cp.verifyTaskRun(ctx, k8sclient, tektonClient);(err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
@@ -285,7 +285,7 @@ func TestVerifyResources_OCIBundle(t *testing.T) {
 
 }
 
-func TestVerifyResources_TaskRef(t *testing.T) {
+func TestVerifyTaskRun_TaskRef(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	k8sclient := fakek8s.NewSimpleClientset()
@@ -346,7 +346,7 @@ func TestVerifyResources_TaskRef(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.taskRun.verifyTask(ctx, k8sclient, tektonClient)
+			err := tc.taskRun.verifyTaskRun(ctx, k8sclient, tektonClient)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}

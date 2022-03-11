@@ -82,7 +82,7 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 	}
 
 	cp := copyTrustedTaskRun(tr)
-	if errs := errs.Also(cp.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
+	if errs := errs.Also(cp.verifyTaskRun(ctx, k8sclient, tektonClient)); errs != nil {
 		return errs
 	}
 	return nil
@@ -92,7 +92,7 @@ func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) 
 func (tr *TrustedTaskRun) SetDefaults(ctx context.Context) {
 }
 
-func (tr *TrustedTaskRun) verifyTask(
+func (tr *TrustedTaskRun) verifyTaskRun(
 	ctx context.Context,
 	k8sclient kubernetes.Interface,
 	tektonClient versioned.Interface,
