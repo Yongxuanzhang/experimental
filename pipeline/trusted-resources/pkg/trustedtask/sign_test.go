@@ -67,19 +67,18 @@ func TestSignTaskSpec(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
+
 			if tc.wantErr {
-				// We expected and got an error, nothing else to do.
 				return
 			}
-			
-			sig, err := base64.StdEncoding.DecodeString(signature)
-				if err != nil {
-					t.Fatalf("error decoding signature: %v", err)
-				}
-				if err := VerifyTaskSpec(ctx, taskSpecTest, tc.signer, signature); err != nil {
-					t.Fatalf("SignTaskSpec() generate wrong signature: %v", err)
-				}
+			signature, err := base64.StdEncoding.DecodeString(sig)
+			if err != nil {
+				t.Fatalf("error decoding signature: %v", err)
 			}
+			if err := VerifyTaskSpec(ctx, taskSpecTest, tc.signer, signature); err != nil {
+				t.Fatalf("SignTaskSpec() generate wrong signature: %v", err)
+			}
+
 		})
 	}
 }
@@ -115,18 +114,19 @@ func TestSignRawPayload(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			signature, err := SignRawPayload(tc.signer, tc.payload)
+			sig, err := SignRawPayload(tc.signer, tc.payload)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
 			}
-			if !tc.wantErr {
-				sig, err := base64.StdEncoding.DecodeString(signature)
-				if err != nil {
-					t.Fatal("failed to decode signature")
-				}
-				if err := sv.VerifySignature((bytes.NewReader(sig)), bytes.NewReader(tc.payload)); err != nil {
-					t.Fatalf("SignRawPayload() get wrong signature %v:", err)
-				}
+			if tc.wantErr {
+				return
+			}
+			signature, err := base64.StdEncoding.DecodeString(sig)
+			if err != nil {
+				t.Fatal("failed to decode signature")
+			}
+			if err := sv.VerifySignature((bytes.NewReader(signature)), bytes.NewReader(tc.payload)); err != nil {
+				t.Fatalf("SignRawPayload() get wrong signature %v:", err)
 			}
 
 		})
