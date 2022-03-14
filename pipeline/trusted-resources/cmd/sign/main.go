@@ -28,7 +28,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/cosign/cmd/cosign/cli/generate"
-	"github.com/sigstore/cosign/pkg/cosign"
 	"github.com/sigstore/cosign/pkg/signature"
 	sigstore "github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/experimental/pipelines/trusted-resources/pkg/trustedtask"
@@ -136,12 +135,6 @@ func Sign(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.Task, signer sig
 		return err
 	}
 
-	_, err := writer.Write(signedBuf)
+	_, err = writer.Write(signedBuf)
 	return err
-}
-
-func pass(s string) cosign.PassFunc {
-	return func(_ bool) ([]byte, error) {
-		return []byte(s), nil
-	}
 }
