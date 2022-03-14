@@ -35,7 +35,7 @@ func TestSignTaskSpec(t *testing.T) {
 	ctx := context.Background()
 	sv, err := GetSignerVerifier(password)
 	if err != nil {
-		t.Errorf("failed to get signerverifier %v", err)
+		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
 	tcs := []struct {
@@ -65,15 +65,15 @@ func TestSignTaskSpec(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sig, err := SignTaskSpec(tc.signer, taskSpecTest)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
 			if !tc.wantErr {
 				signature, err := base64.StdEncoding.DecodeString(sig)
 				if err != nil {
-					t.Errorf("error decoding signature: %v", err)
+					t.Fatalf("error decoding signature: %v", err)
 				}
 				if err := VerifyTaskSpec(ctx, taskSpecTest, tc.signer, signature); err != nil {
-					t.Errorf("SignTaskSpec() generate wrong signature: %v", err)
+					t.Fatalf("SignTaskSpec() generate wrong signature: %v", err)
 				}
 			}
 		})
@@ -83,7 +83,7 @@ func TestSignTaskSpec(t *testing.T) {
 func TestSignRawPayload(t *testing.T) {
 	sv, err := GetSignerVerifier(password)
 	if err != nil {
-		t.Errorf("failed to get signerverifier %v", err)
+		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
 	tcs := []struct {
@@ -113,15 +113,15 @@ func TestSignRawPayload(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			signature, err := SignRawPayload(tc.signer, tc.payload)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
 			}
 			if !tc.wantErr {
 				sig, err := base64.StdEncoding.DecodeString(signature)
 				if err != nil {
-					t.Error("failed to decode signature")
+					t.Fatal("failed to decode signature")
 				}
 				if err := sv.VerifySignature((bytes.NewReader(sig)), bytes.NewReader(tc.payload)); err != nil {
-					t.Errorf("SignRawPayload() get wrong signature %v:", err)
+					t.Fatalf("SignRawPayload() get wrong signature %v:", err)
 				}
 			}
 
@@ -139,12 +139,12 @@ func TestDigest(t *testing.T) {
 
 	// Push OCI bundle
 	if _, err := pushOCIImage(t, u, ts); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	kc, err := k8schain.NewNoClient(ctx)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tcs := []struct {
@@ -169,7 +169,7 @@ func TestDigest(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err = Digest(ctx, tc.imageRef, remote.WithAuthFromKeychain(kc)); (err != nil) != tc.wantErr {
-				t.Errorf("Digest() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("Digest() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -203,7 +203,7 @@ func TestGenerateKeyFile(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, _, err := GenerateKeyFile(tmpDir, pass(password)); (err != nil) != tc.wantErr {
-				t.Errorf("GenerateKeyFile() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("GenerateKeyFile() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}

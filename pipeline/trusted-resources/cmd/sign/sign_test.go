@@ -123,14 +123,14 @@ func TestSign_Taskrun(t *testing.T) {
 			var writer bytes.Buffer
 			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("Sign() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
 			}
 
 			signed := writer.Bytes()
 			tr, signature := unmarshal(t, signed)
 
 			if err := trustedtask.VerifyTaskSpec(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
-				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
+				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
 			}
 
 		})
@@ -185,14 +185,14 @@ func TestSign_OCIBundle(t *testing.T) {
 			var writer bytes.Buffer
 			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("Sign() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
 			}
 
 			signed := writer.Bytes()
 			tr, signature := unmarshal(t, signed)
 
 			if err := trustedtask.VerifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, sv, signature, k8sclient); err != nil {
-				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
+				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
 			}
 
 		})
@@ -233,14 +233,14 @@ func TestSign_TaskRef(t *testing.T) {
 			var writer bytes.Buffer
 			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("Sign() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
 			}
 
 			signed := writer.Bytes()
 			_, signature := unmarshal(t, signed)
 
 			if err := trustedtask.VerifyTaskSpec(ctx, &ts.Spec, sv, signature); err != nil {
-				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
+				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
 			}
 
 		})
@@ -250,12 +250,12 @@ func TestSign_TaskRef(t *testing.T) {
 func unmarshal(t *testing.T, buf []byte) (*v1beta1.TaskRun, []byte) {
 	tr := &v1beta1.TaskRun{}
 	if err := yaml.Unmarshal(buf, &tr); err != nil {
-		t.Errorf("error unmarshalling buffer: %v", err)
+		t.Fatalf("error unmarshalling buffer: %v", err)
 	}
 
 	signature, err := base64.StdEncoding.DecodeString(tr.Annotations[trustedtask.SignatureAnnotation])
 	if err != nil {
-		t.Errorf("error decoding signature: %v", err)
+		t.Fatalf("error decoding signature: %v", err)
 	}
 	return tr, signature
 }
