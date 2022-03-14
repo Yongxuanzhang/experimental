@@ -136,9 +136,8 @@ func Sign(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.Task, signer sig
 		return err
 	}
 
-	writer.Write(signedBuf)
-
-	return nil
+	_, err := writer.Write(signedBuf)
+	return err
 }
 
 func pass(s string) cosign.PassFunc {
