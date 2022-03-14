@@ -127,10 +127,8 @@ func TestSign_Taskrun(t *testing.T) {
 			}
 
 			signed := writer.Bytes()
-			tr, signature, err := unmarshal(t, signed)
-			if err != nil {
-				t.Fatalf("error unmarshal buffer: %v", err)
-			}
+			tr, signature := unmarshal(t, signed)
+
 			if err := trustedtask.VerifyTaskSpec(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
 				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
 			}
@@ -158,9 +156,7 @@ func TestSign_OCIBundle(t *testing.T) {
 	}
 
 	// Push OCI bundle
-	if _, err := pushOCIImage(t, u, ts); err != nil {
-		t.Fatal(err)
-	}
+	pushOCIImage(t, u, ts)
 
 	tcs := []struct {
 		name    string
@@ -193,10 +189,7 @@ func TestSign_OCIBundle(t *testing.T) {
 			}
 
 			signed := writer.Bytes()
-			tr, signature, err := unmarshal(t, signed)
-			if err != nil {
-				t.Fatalf("error unmarshal buffer: %v", err)
-			}
+			tr, signature := unmarshal(t, signed)
 
 			if err := trustedtask.VerifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, sv, signature, k8sclient); err != nil {
 				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
@@ -244,10 +237,7 @@ func TestSign_TaskRef(t *testing.T) {
 			}
 
 			signed := writer.Bytes()
-			_, signature, err := unmarshal(t, signed)
-			if err != nil {
-				t.Fatalf("error unmarshal buffer: %v", err)
-			}
+			_, signature := unmarshal(t, signed)
 
 			if err := trustedtask.VerifyTaskSpec(ctx, &ts.Spec, sv, signature); err != nil {
 				t.Errorf("VerifyTaskOCIBundle get error: %v", err)
@@ -257,21 +247,20 @@ func TestSign_TaskRef(t *testing.T) {
 	}
 }
 
-func unmarshal(t *testing.T, buf []byte) (*v1beta1.TaskRun, []byte, error) {
-	t.Helper()
+func unmarshal(t *testing.T, buf []byte) (*v1beta1.TaskRun, []byte) {
 	tr := &v1beta1.TaskRun{}
 	if err := yaml.Unmarshal(buf, &tr); err != nil {
-		return nil, nil, err
+		t.Errorf("error unmarshalling buffer: %v", err)
 	}
 
 	signature, err := base64.StdEncoding.DecodeString(tr.Annotations[trustedtask.SignatureAnnotation])
 	if err != nil {
-		return nil, nil, err
+		t.Errorf("error decoding signature: %v", err)
 	}
-	return tr, signature, nil
+	return tr, signature
 }
 
-func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash, error) {
+func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash) {
 	t.Helper()
 	ref, err := remotetest.CreateImage(u.Host+"/task/"+task.Name, task)
 	if err != nil {
@@ -292,5 +281,5 @@ func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash, e
 	if err != nil {
 		t.Errorf("failed to fetch img manifest: %v", err)
 	}
-	return dig, nil
+	return dig
 }
