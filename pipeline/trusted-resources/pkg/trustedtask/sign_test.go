@@ -67,8 +67,12 @@ func TestSignTaskSpec(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
-			if !tc.wantErr {
-				signature, err := base64.StdEncoding.DecodeString(sig)
+			if tc.wantErr {
+				// We expected and got an error, nothing else to do.
+				return
+			}
+			
+			sig, err := base64.StdEncoding.DecodeString(signature)
 				if err != nil {
 					t.Fatalf("error decoding signature: %v", err)
 				}
