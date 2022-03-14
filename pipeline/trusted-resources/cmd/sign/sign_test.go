@@ -99,42 +99,27 @@ func TestSign_Taskrun(t *testing.T) {
 		t.Fatalf("error get signerverifier: %v", err)
 	}
 
-	tcs := []struct {
-		name    string
-		tr      *v1beta1.TaskRun
-		ts      *v1beta1.Task
-		wantErr bool
-	}{{
-		name: "Sign TaskRun",
-		tr: &v1beta1.TaskRun{
-			TypeMeta:   trTypeMeta,
-			ObjectMeta: trObjectMeta,
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &ts.Spec,
-			},
+	tr := &v1beta1.TaskRun{
+		TypeMeta:   trTypeMeta,
+		ObjectMeta: trObjectMeta,
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &ts.Spec,
 		},
-		ts:      nil,
-		wantErr: false,
-	},
 	}
 
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			var writer bytes.Buffer
-			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
-			}
+	var writer bytes.Buffer
 
-			signed := writer.Bytes()
-			tr, signature := unmarshal(t, signed)
-
-			if err := trustedtask.VerifyTaskSpec(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
-				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
-			}
-
-		})
+	if err := Sign(ctx, tr, nil, sv, &writer); err != nil {
+		t.Fatalf("Sign() get err %v", err)
 	}
+
+	signed := writer.Bytes()
+	tr, signature := unmarshal(t, signed)
+
+	if err := trustedtask.VerifyTaskSpec(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
+		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
+	}
+
 }
 
 func TestSign_OCIBundle(t *testing.T) {
@@ -158,45 +143,29 @@ func TestSign_OCIBundle(t *testing.T) {
 	// Push OCI bundle
 	pushOCIImage(t, u, ts)
 
-	tcs := []struct {
-		name    string
-		tr      *v1beta1.TaskRun
-		ts      *v1beta1.Task
-		wantErr bool
-	}{{
-		name: "Sign TaskRun OCIBundle",
-		tr: &v1beta1.TaskRun{
-			TypeMeta:   trTypeMeta,
-			ObjectMeta: trObjectMeta,
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name:   "ts",
-					Bundle: u.Host + "/task/" + ts.Name,
-				},
+	tr := &v1beta1.TaskRun{
+		TypeMeta:   trTypeMeta,
+		ObjectMeta: trObjectMeta,
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "ts",
+				Bundle: u.Host + "/task/" + ts.Name,
 			},
 		},
-		ts:      nil,
-		wantErr: false,
-	},
 	}
 
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			var writer bytes.Buffer
-			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
-			}
-
-			signed := writer.Bytes()
-			tr, signature := unmarshal(t, signed)
-
-			if err := trustedtask.VerifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, sv, signature, k8sclient); err != nil {
-				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
-			}
-
-		})
+	var writer bytes.Buffer
+	if err := Sign(ctx, tr, nil, sv, &writer); err != nil {
+		t.Fatalf("Sign() get err %v", err)
 	}
+
+	signed := writer.Bytes()
+	tr, signature := unmarshal(t, signed)
+
+	if err := trustedtask.VerifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, sv, signature, k8sclient); err != nil {
+		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
+	}
+
 }
 
 func TestSign_TaskRef(t *testing.T) {
@@ -207,44 +176,28 @@ func TestSign_TaskRef(t *testing.T) {
 		t.Fatalf("error get signerverifier: %v", err)
 	}
 
-	tcs := []struct {
-		name    string
-		tr      *v1beta1.TaskRun
-		ts      *v1beta1.Task
-		wantErr bool
-	}{{
-		name: "Sign TaskRun TaskRef",
-		tr: &v1beta1.TaskRun{
-			TypeMeta:   trTypeMeta,
-			ObjectMeta: trObjectMeta,
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "test-task",
-				},
+	tr := &v1beta1.TaskRun{
+		TypeMeta:   trTypeMeta,
+		ObjectMeta: trObjectMeta,
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "test-task",
 			},
 		},
-		ts:      ts,
-		wantErr: false,
-	},
 	}
 
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			var writer bytes.Buffer
-			err := Sign(ctx, tc.tr, tc.ts, sv, &writer)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("Sign() get err %v, wantErr %t", err, tc.wantErr)
-			}
-
-			signed := writer.Bytes()
-			_, signature := unmarshal(t, signed)
-
-			if err := trustedtask.VerifyTaskSpec(ctx, &ts.Spec, sv, signature); err != nil {
-				t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
-			}
-
-		})
+	var writer bytes.Buffer
+	if err := Sign(ctx, tr, ts, sv, &writer); err != nil {
+		t.Fatalf("Sign() get err %v", err)
 	}
+
+	signed := writer.Bytes()
+	_, signature := unmarshal(t, signed)
+
+	if err := trustedtask.VerifyTaskSpec(ctx, &ts.Spec, sv, signature); err != nil {
+		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
+	}
+
 }
 
 func unmarshal(t *testing.T, buf []byte) (*v1beta1.TaskRun, []byte) {
