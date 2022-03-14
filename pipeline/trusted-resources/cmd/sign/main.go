@@ -81,7 +81,7 @@ func main() {
 
 	f, err := os.OpenFile(filepath.Join(*targetDir, *targetFile), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		panic(err)
+		log.Fatalf("error opening output file: %v", err)
 	}
 	defer f.Close()
 
