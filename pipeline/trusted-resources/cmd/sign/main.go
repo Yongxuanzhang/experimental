@@ -78,7 +78,7 @@ func main() {
 		log.Fatalf("error getting signer: %v", err)
 	}
 
-	f, err := os.OpenFile(filepath.Join(*targetDir, *targetFile), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(filepath.Join(*targetDir, *targetFile), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatalf("error opening output file: %v", err)
 	}
