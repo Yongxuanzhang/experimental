@@ -260,7 +260,7 @@ func unmarshal(t *testing.T, buf []byte) (*v1beta1.TaskRun, []byte) {
 	return tr, signature
 }
 
-func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash) {
+func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) typesv1.Hash {
 	t.Helper()
 	ref, err := remotetest.CreateImage(u.Host+"/task/"+task.Name, task)
 	if err != nil {
