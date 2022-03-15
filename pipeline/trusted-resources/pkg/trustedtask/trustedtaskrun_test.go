@@ -348,7 +348,7 @@ func TestVerifyTaskRun_TaskRef(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.taskRun.verifyTaskRun(ctx, k8sclient, tektonClient)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -359,7 +359,7 @@ func TestVerifyTaskSpec(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	// get keys
-	sv, err := getSignerVerifier(password)
+	sv, err := GetSignerVerifier(password)
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
@@ -406,9 +406,9 @@ func TestVerifyTaskSpec(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs := verify(ctx, tc.taskSpec, sv, signature)
+			errs := Verify(ctx, tc.taskSpec, sv, signature)
 			if (errs != nil) != tc.wantErr {
-				t.Errorf("verifyTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("verifyTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -436,7 +436,7 @@ func TestVerifyTaskOCIBundle(t *testing.T) {
 	}
 
 	// Get signer
-	sv, err := getSignerVerifier(password)
+	sv, err := GetSignerVerifier(password)
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
 	}
@@ -483,9 +483,9 @@ func TestVerifyTaskOCIBundle(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs := verifyTaskOCIBundle(ctx, tc.bundle, sv, signature, k8sclient)
+			errs := VerifyTaskOCIBundle(ctx, tc.bundle, sv, signature, k8sclient)
 			if (errs != nil) != tc.wantErr {
-				t.Errorf("verifyTaskOCIBundle() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("verifyTaskOCIBundle() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -522,22 +522,22 @@ func pushOCIImage(t *testing.T, u *url.URL, task *v1beta1.Task) (typesv1.Hash, e
 	t.Helper()
 	ref, err := remotetest.CreateImage(u.Host+"/task/"+task.Name, task)
 	if err != nil {
-		t.Errorf("uploading image failed unexpectedly with an error: %v", err)
+		t.Fatalf("uploading image failed unexpectedly with an error: %v", err)
 	}
 
 	imgRef, err := imgname.ParseReference(ref)
 	if err != nil {
-		t.Errorf("digest %s is not a valid reference: %v", ref, err)
+		t.Fatalf("digest %s is not a valid reference: %v", ref, err)
 	}
 
 	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err != nil {
-		t.Errorf("could not fetch created image: %v", err)
+		t.Fatalf("could not fetch created image: %v", err)
 	}
 
 	dig, err := img.Digest()
 	if err != nil {
-		t.Errorf("failed to fetch img manifest: %v", err)
+		t.Fatalf("failed to fetch img manifest: %v", err)
 	}
 	return dig, nil
 }

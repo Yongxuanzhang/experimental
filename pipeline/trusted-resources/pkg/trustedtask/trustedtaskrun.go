@@ -121,7 +121,7 @@ func (tr *TrustedTaskRun) verifyTaskRun(
 	}
 
 	logger.Info("Verifying TaskRun")
-	if err := verify(ctx, tr, verifier, signature); err != nil {
+	if err := Verify(ctx, tr, verifier, signature); err != nil {
 		return apis.ErrGeneric(err.Error(), "taskrun")
 	}
 
@@ -175,7 +175,7 @@ func verifier(
 	}
 }
 
-func verify(
+func Verify(
 	ctx context.Context,
 	taskspec interface{},
 	verifier signature.Verifier,
@@ -196,7 +196,7 @@ func verify(
 	return nil
 }
 
-func verifyTaskOCIBundle(
+func VerifyTaskOCIBundle(
 	ctx context.Context,
 	bundle string,
 	verifier signature.Verifier,

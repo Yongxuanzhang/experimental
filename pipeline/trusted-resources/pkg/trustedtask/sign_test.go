@@ -17,7 +17,9 @@ limitations under the License.
 package trustedtask
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"net/http/httptest"
 	"net/url"
 	"testing"
@@ -27,13 +29,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestSignTaskSpec(t *testing.T) {
-	sv, err := getSignerVerifier(password)
+	ctx := context.Background()
+	sv, err := GetSignerVerifier(password)
 	if err != nil {
-		t.Errorf("failed to get signerverifier %v", err)
+		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
 	tcs := []struct {
@@ -61,18 +63,30 @@ func TestSignTaskSpec(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := Sign(tc.signer, taskSpecTest); (err != nil) != tc.wantErr {
-				t.Errorf("Sign() get err %v, wantErr %t", err, tc.wantErr)
+			sig, err := Sign(tc.signer, taskSpecTest)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
 			}
+
+			if tc.wantErr {
+				return
+			}
+			signature, err := base64.StdEncoding.DecodeString(sig)
+			if err != nil {
+				t.Fatalf("error decoding signature: %v", err)
+			}
+			if err := Verify(ctx, taskSpecTest, tc.signer, signature); err != nil {
+				t.Fatalf("SignTaskSpec() generate wrong signature: %v", err)
+			}
+
 		})
 	}
-
 }
 
 func TestSignRawPayload(t *testing.T) {
-	sv, err := getSignerVerifier(password)
+	sv, err := GetSignerVerifier(password)
 	if err != nil {
-		t.Errorf("failed to get signerverifier %v", err)
+		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
 	tcs := []struct {
@@ -100,18 +114,27 @@ func TestSignRawPayload(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := SignRawPayload(tc.signer, tc.payload); (err != nil) != tc.wantErr {
-				t.Errorf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
+			sig, err := SignRawPayload(tc.signer, tc.payload)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
 			}
+			if tc.wantErr {
+				return
+			}
+			signature, err := base64.StdEncoding.DecodeString(sig)
+			if err != nil {
+				t.Fatal("failed to decode signature")
+			}
+			if err := sv.VerifySignature((bytes.NewReader(signature)), bytes.NewReader(tc.payload)); err != nil {
+				t.Fatalf("SignRawPayload() get wrong signature %v:", err)
+			}
+
 		})
 	}
-
 }
 
 func TestDigest(t *testing.T) {
 	ctx := context.Background()
-
-	k8sclient := fakek8s.NewSimpleClientset(sa)
 
 	// Create registry server
 	s := httptest.NewServer(registry.New())
@@ -120,15 +143,12 @@ func TestDigest(t *testing.T) {
 
 	// Push OCI bundle
 	if _, err := pushOCIImage(t, u, ts); err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
-	kc, err := k8schain.New(ctx, k8sclient, k8schain.Options{
-		Namespace:          nameSpace,
-		ServiceAccountName: serviceAccount,
-	})
+	kc, err := k8schain.NewNoClient(ctx)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tcs := []struct {
@@ -153,7 +173,7 @@ func TestDigest(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err = Digest(ctx, tc.imageRef, remote.WithAuthFromKeychain(kc)); (err != nil) != tc.wantErr {
-				t.Errorf("Digest() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("Digest() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}
@@ -187,7 +207,7 @@ func TestGenerateKeyFile(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, _, err := GenerateKeyFile(tmpDir, pass(password)); (err != nil) != tc.wantErr {
-				t.Errorf("GenerateKeyFile() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("GenerateKeyFile() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}

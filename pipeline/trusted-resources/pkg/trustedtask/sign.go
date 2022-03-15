@@ -58,7 +58,7 @@ func SignRawPayload(signer signature.Signer, rawPayload []byte) (string, error) 
 	return base64.StdEncoding.EncodeToString(sig), nil
 }
 
-// Get digest
+// Digest returns the digest of image given imageReference
 func Digest(ctx context.Context, imageReference string, opt ...remote.Option) (v1.Hash, error) {
 	imgRef, err := name.ParseReference(imageReference)
 	if err != nil {
@@ -85,25 +85,20 @@ func GenerateKeyFile(dir string, pf cosign.PassFunc) (string, string, error) {
 	}
 
 	priKey := filepath.Join(dir, "cosign.key")
-	if err := os.WriteFile(priKey, keys.PrivateBytes, 0666); err != nil {
+	if err := os.WriteFile(priKey, keys.PrivateBytes, 0600); err != nil {
 		return "", "", err
 	}
 
 	pubKey := filepath.Join(dir, "cosign.pub")
-	if err := os.WriteFile(pubKey, keys.PublicBytes, 0666); err != nil {
+	if err := os.WriteFile(pubKey, keys.PublicBytes, 0644); err != nil {
 		return "", "", err
 	}
 
 	return priKey, pubKey, nil
 }
 
-func pass(s string) cosign.PassFunc {
-	return func(_ bool) ([]byte, error) {
-		return []byte(s), nil
-	}
-}
-
-func getSignerVerifier(password string) (signature.SignerVerifier, error) {
+// GetSignerVerifier creates SignerVerifier from given password
+func GetSignerVerifier(password string) (signature.SignerVerifier, error) {
 	keys, err := cosign.GenerateKeyPair(pass(password))
 	if err != nil {
 		return nil, err
@@ -113,4 +108,10 @@ func getSignerVerifier(password string) (signature.SignerVerifier, error) {
 		return nil, err
 	}
 	return sv, nil
+}
+
+func pass(s string) cosign.PassFunc {
+	return func(_ bool) ([]byte, error) {
+		return []byte(s), nil
+	}
 }
