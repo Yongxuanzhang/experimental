@@ -100,7 +100,7 @@ func (ts *TrustedTask) verifyTask(
 	}
 
 	logger.Info("Verifying Task")
-	if err := verify(ctx, ts, verifier, signature); err != nil {
+	if err := Verify(ctx, ts, verifier, signature); err != nil {
 		return apis.ErrGeneric(err.Error(), "taskrun")
 	}
 

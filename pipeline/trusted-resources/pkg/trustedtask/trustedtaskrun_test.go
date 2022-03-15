@@ -289,7 +289,7 @@ func TestVerifyTaskRun_TaskRef(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	k8sclient := fakek8s.NewSimpleClientset()
-	tektonClient := faketekton.NewSimpleClientset(ts, tsTampered)
+	tektonClient := faketekton.NewSimpleClientset(ts)
 
 	// Get Signer
 	signer, err := getSignerFromFile(t, ctx, k8sclient)
@@ -311,12 +311,8 @@ func TestVerifyTaskRun_TaskRef(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: ltr}
 
 	signed := unsigned.DeepCopy()
-	ts, err := tektonClient.TektonV1beta1().Tasks(unsigned.Namespace).Get(ctx, unsigned.Spec.TaskRef.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Unexpected err %v", err)
-	}
 
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, &ts.Spec)
+	signed.Annotations[SignatureAnnotation], err = Sign(signer, ltr)
 
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
