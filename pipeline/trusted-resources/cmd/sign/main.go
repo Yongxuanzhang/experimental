@@ -60,22 +60,26 @@ func main() {
 		log.Fatalf("error unmarshalling taskrun: %v", err)
 	}
 
-	var ts *v1beta1.Task
-	if *taskFile != "" {
-		tsBuf, err := ioutil.ReadFile(*taskFile)
-		if err != nil {
-			log.Fatalf("error reading task: %v", err)
-		}
-
-		if err := yaml.Unmarshal(tsBuf, &ts); err != nil {
-			log.Fatalf("error unmarshalling task: %v", err)
-		}
-	}
-
 	// Load signer from key files
 	signer, err := signature.SignerFromKeyRef(ctx, *privateKey, generate.GetPass)
 	if err != nil {
 		log.Fatalf("error getting signer: %v", err)
+	}
+
+	signature, err := trustedtask.Sign(signer, tr)
+	if err != nil {
+		log.Fatalf("error getting signature: %v", err)
+	}
+
+	if tr.Annotations == nil {
+		tr.Annotations = map[string]string{trustedtask.SignatureAnnotation: signature}
+	} else {
+		tr.Annotations[trustedtask.SignatureAnnotation] = signature
+	}
+
+	signedBuf, err := yaml.Marshal(tr)
+	if err != nil {
+		log.Fatalf("error marshalling taskrun: %v", err)
 	}
 
 	f, err := os.OpenFile(filepath.Join(*targetDir, *targetFile), os.O_WRONLY|os.O_CREATE, 0644)
@@ -84,9 +88,9 @@ func main() {
 	}
 	defer f.Close()
 
-	// Sign the task and write to writer
-	if err := Sign(ctx, tr, ts, signer, f); err != nil {
-		log.Fatalf("error signing taskrun: %v", err)
+	_, err = f.Write(signedBuf)
+	if err != nil {
+		log.Fatalf("error writing taskrun: %v", err)
 	}
 
 }
