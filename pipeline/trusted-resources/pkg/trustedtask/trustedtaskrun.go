@@ -236,20 +236,20 @@ func VerifyTaskOCIBundle(
 	return nil
 }
 
-func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun {
-	cp := TrustedTaskRun{}
-	cp.TypeMeta = tr.TypeMeta
-	cp.SetName(tr.Name)
-	cp.SetGenerateName(tr.GenerateName)
-	cp.SetNamespace(tr.Namespace)
-	cp.Labels = make(map[string]string)
-	for k, v := range tr.Labels {
-		cp.Labels[k] = v
+func copyTrustedTaskRun(in *TrustedTaskRun) TrustedTaskRun {
+	c := TrustedTaskRun{}
+	c.TypeMeta = in.TypeMeta
+	c.SetName(in.Name)
+	c.SetGenerateName(in.GenerateName)
+	c.SetNamespace(in.Namespace)
+	c.Labels = make(map[string]string)
+	for k, v := range in.Labels {
+		c.Labels[k] = v
 	}
-	cp.Annotations = make(map[string]string)
-	for k, v := range tr.Annotations {
-		cp.Annotations[k] = v
+	c.Annotations = make(map[string]string)
+	for k, v := range in.Annotations {
+		c.Annotations[k] = v
 	}
-	cp.Spec = *tr.Spec.DeepCopy()
-	return cp
+	c.Spec = *in.Spec.DeepCopy()
+	return c
 }

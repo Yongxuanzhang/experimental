@@ -101,27 +101,27 @@ func (ts *TrustedTask) verifyTask(
 
 	logger.Info("Verifying Task")
 	if err := VerifyInterface(ctx, ts, verifier, signature); err != nil {
-		return apis.ErrGeneric(err.Error(), "taskrun")
+		return apis.ErrGeneric(err.Error(), "task")
 	}
 
 	return nil
 }
 
-
-func copyTrustedTask(tr *TrustedTask) TrustedTask{
-	cp := TrustedTask{}
-	cp.TypeMeta=tr.TypeMeta
-	cp.SetName(tr.Name)
-	cp.SetGenerateName(tr.GenerateName)
-	cp.SetNamespace(tr.Namespace)
-	cp.Labels = make(map[string]string)
-	for k,v := range tr.Labels {
-		cp.Labels[k] = v
+// copyTrustedTask will copy fields defined by users
+func copyTrustedTask(in *TrustedTask) TrustedTask{
+	c := TrustedTask{}
+	c.TypeMeta=in.TypeMeta
+	c.SetName(in.Name)
+	c.SetGenerateName(in.GenerateName)
+	c.SetNamespace(in.Namespace)
+	c.Labels = make(map[string]string)
+	for k,v := range in.Labels {
+		c.Labels[k] = v
 	}
-	cp.Annotations = make(map[string]string)
-	for k,v := range tr.Annotations {
-		cp.Annotations[k] = v
+	c.Annotations = make(map[string]string)
+	for k,v := range in.Annotations {
+		c.Annotations[k] = v
 	}
-	cp.Spec = *tr.Spec.DeepCopy()
-	return cp
+	c.Spec = *in.Spec.DeepCopy()
+	return c
 }
