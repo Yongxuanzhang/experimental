@@ -67,7 +67,7 @@ var (
 
 // Validate the TaskRun is tampered or not.
 func (tr *TrustedTaskRun) Validate(ctx context.Context) (errs *apis.FieldError) {
-	if !apis.IsInCreate(ctx){
+	if !apis.IsInCreate(ctx) {
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func (tr *TrustedTaskRun) verifyTaskRun(
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
 
-	delete(tr.ObjectMeta.Annotations, SignatureAnnotation);
+	delete(tr.ObjectMeta.Annotations, SignatureAnnotation)
 
 	verifier, err := verifier(ctx, tr.ObjectMeta.Annotations, k8sclient)
 	if err != nil {
@@ -126,28 +126,28 @@ func (tr *TrustedTaskRun) verifyTaskRun(
 	}
 
 	if tr.Spec.TaskRef != nil {
-			serviceAccountName := os.Getenv("WEBHOOK_SERVICEACCOUNT_NAME")
-			if serviceAccountName == "" {
-				serviceAccountName = "tekton-verify-task-webhook"
-			}
+		serviceAccountName := os.Getenv("WEBHOOK_SERVICEACCOUNT_NAME")
+		if serviceAccountName == "" {
+			serviceAccountName = "tekton-verify-task-webhook"
+		}
 
-			getfunc,err:=resources.GetTaskFunc(ctx,k8sclient,tektonClient,tr.Spec.TaskRef,tr.Namespace,serviceAccountName)
-			if err != nil {
-				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
-			}
+		getfunc, err := resources.GetTaskFunc(ctx, k8sclient, tektonClient, tr.Spec.TaskRef, tr.Namespace, serviceAccountName)
+		if err != nil {
+			return apis.ErrGeneric(err.Error(), "spec", "taskRef")
+		}
 
-			actualTask, err := getfunc(ctx, tr.Spec.TaskRef.Name)
-			if err != nil {
-				return apis.ErrGeneric(err.Error(), "spec", "taskRef")
-			}
-			fmt.Println(actualTask)
+		actualTask, err := getfunc(ctx, tr.Spec.TaskRef.Name)
+		if err != nil {
+			return apis.ErrGeneric(err.Error(), "spec", "taskRef")
+		}
+		fmt.Println(actualTask)
 
-			ts:=v1beta1.Task{}
-			tt:=TrustedTask{}
-			ts.Spec=actualTask.TaskSpec()
-			ts.ObjectMeta=actualTask.TaskMetadata()
-			tt.Task=ts
-			return tt.Validate(ctx)
+		ts := v1beta1.Task{}
+		tt := TrustedTask{}
+		ts.Spec = actualTask.TaskSpec()
+		ts.ObjectMeta = actualTask.TaskMetadata()
+		tt.Task = ts
+		return tt.Validate(ctx)
 	}
 
 	return nil
@@ -231,18 +231,18 @@ func VerifyTaskOCIBundle(
 	return nil
 }
 
-func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun{
+func copyTrustedTaskRun(tr *TrustedTaskRun) TrustedTaskRun {
 	cp := TrustedTaskRun{}
-	cp.TypeMeta=tr.TypeMeta
+	cp.TypeMeta = tr.TypeMeta
 	cp.SetName(tr.Name)
 	cp.SetGenerateName(tr.GenerateName)
 	cp.SetNamespace(tr.Namespace)
 	cp.Labels = make(map[string]string)
-	for k,v := range tr.Labels {
+	for k, v := range tr.Labels {
 		cp.Labels[k] = v
 	}
 	cp.Annotations = make(map[string]string)
-	for k,v := range tr.Annotations {
+	for k, v := range tr.Annotations {
 		cp.Annotations[k] = v
 	}
 	cp.Spec = *tr.Spec.DeepCopy()
