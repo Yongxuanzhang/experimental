@@ -140,17 +140,22 @@ func (tr *TrustedTaskRun) verifyTaskRun(
 		if err != nil {
 			return apis.ErrGeneric(err.Error(), "spec", "taskRef")
 		}
-		fmt.Println(actualTask)
 
-		ts := v1beta1.Task{}
-		tt := TrustedTask{}
-		ts.Spec = actualTask.TaskSpec()
-		ts.ObjectMeta = actualTask.TaskMetadata()
-		tt.Task = ts
-		return tt.Validate(ctx)
+		trustedTask := copyTask(actualTask)
+		return trustedTask.Validate(ctx)
 	}
 
 	return nil
+}
+
+func copyTask(t v1beta1.TaskObject) TrustedTask {
+	task := v1beta1.Task{}
+	trustedTask := TrustedTask{}
+	task.Spec = t.TaskSpec()
+	task.ObjectMeta = t.TaskMetadata()
+	trustedTask.Task = task
+	trustedTask.Task = task
+	return trustedTask
 }
 
 func verifier(
