@@ -20,52 +20,75 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"io"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
-func TestSignTaskSpec(t *testing.T) {
+func TestSignInterface(t *testing.T) {
 	ctx := context.Background()
 	sv, err := GetSignerVerifier(password)
 	if err != nil {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
+	var mocksigner mockSigner
+
 	tcs := []struct {
 		name     string
 		signer   signature.SignerVerifier
-		taskSpec *v1beta1.TaskSpec
+		target   interface{}
+		expected string
 		wantErr  bool
 	}{{
-		name:     "Sign TaskSpec",
-		signer:   sv,
-		taskSpec: taskSpecTest,
-		wantErr:  false,
+		name:    "Sign TaskSpec",
+		signer:  sv,
+		target:  taskSpecTest,
+		wantErr: false,
 	}, {
-		name:     "Empty TaskSpec",
-		signer:   sv,
-		taskSpec: nil,
-		wantErr:  false,
+		name:    "Sign String with cosign signer",
+		signer:  sv,
+		target:  "Hello world",
+		wantErr: false,
 	}, {
-		name:     "Empty Signer",
-		signer:   nil,
-		taskSpec: taskSpecTest,
-		wantErr:  true,
+		name:    "Empty TaskSpec",
+		signer:  sv,
+		target:  nil,
+		wantErr: false,
+	}, {
+		name:    "Empty Signer",
+		signer:  nil,
+		target:  taskSpecTest,
+		wantErr: true,
+	}, {
+		name:     "Sign String with mock signer",
+		signer:   mocksigner,
+		target:   "Hello world",
+		expected: "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0=",
+		wantErr:  false,
 	},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			sig, err := Sign(tc.signer, taskSpecTest)
+			sig, err := SignInterface(tc.signer, tc.target)
 			if (err != nil) != tc.wantErr {
-				t.Fatalf("SignTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("SignInterface() get err %v, wantErr %t", err, tc.wantErr)
+			}
+
+			if tc.expected != "" {
+				if d := cmp.Diff(sig, tc.expected); d != "" {
+					t.Fatalf("Diff:\n%s", diff.PrintWantGot(d))
+				}
+				return
 			}
 
 			if tc.wantErr {
@@ -75,8 +98,8 @@ func TestSignTaskSpec(t *testing.T) {
 			if err != nil {
 				t.Fatalf("error decoding signature: %v", err)
 			}
-			if err := Verify(ctx, taskSpecTest, tc.signer, signature); err != nil {
-				t.Fatalf("SignTaskSpec() generate wrong signature: %v", err)
+			if err := VerifyInterface(ctx, tc.target, tc.signer, signature); err != nil {
+				t.Fatalf("SignInterface() generate wrong signature: %v", err)
 			}
 
 		})
@@ -89,13 +112,16 @@ func TestSignRawPayload(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
+	var mocksigner mockSigner
+
 	tcs := []struct {
-		name    string
-		signer  signature.SignerVerifier
-		payload []byte
-		wantErr bool
+		name     string
+		signer   signature.SignerVerifier
+		payload  []byte
+		expected string
+		wantErr  bool
 	}{{
-		name:    "Sign raw payload",
+		name:    "Sign raw payload with cosign signer",
 		signer:  sv,
 		payload: []byte("payload"),
 		wantErr: false,
@@ -109,6 +135,12 @@ func TestSignRawPayload(t *testing.T) {
 		signer:  nil,
 		payload: []byte("payload"),
 		wantErr: true,
+	}, {
+		name:     "Sign raw payload with mock signer",
+		signer:   mocksigner,
+		payload:  []byte("payload"),
+		expected: "cGF5bG9hZA==",
+		wantErr:  false,
 	},
 	}
 
@@ -118,6 +150,14 @@ func TestSignRawPayload(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("SignRawPayload() get err %v, wantErr %t", err, tc.wantErr)
 			}
+
+			if tc.expected != "" {
+				if d := cmp.Diff(sig, tc.expected); d != "" {
+					t.Fatalf("Diff:\n%s", diff.PrintWantGot(d))
+				}
+				return
+			}
+
 			if tc.wantErr {
 				return
 			}
@@ -211,4 +251,12 @@ func TestGenerateKeyFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockSigner struct {
+	signature.SignerVerifier
+}
+
+func (mockSigner) SignMessage(message io.Reader, opts ...signature.SignOption) ([]byte, error) {
+	return io.ReadAll(message)
 }

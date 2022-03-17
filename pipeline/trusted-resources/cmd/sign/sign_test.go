@@ -109,14 +109,14 @@ func TestSign_Taskrun(t *testing.T) {
 
 	var writer bytes.Buffer
 
-	if err := Sign(ctx, tr, nil, sv, &writer); err != nil {
+	if err := Sign(ctx, tr, sv, &writer); err != nil {
 		t.Fatalf("Sign() get err %v", err)
 	}
 
 	signed := writer.Bytes()
 	tr, signature := unmarshal(t, signed)
 
-	if err := trustedtask.Verify(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
+	if err := trustedtask.VerifyInterface(ctx, tr.Spec.TaskSpec, sv, signature); err != nil {
 		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
 	}
 
@@ -155,7 +155,7 @@ func TestSign_OCIBundle(t *testing.T) {
 	}
 
 	var writer bytes.Buffer
-	if err := Sign(ctx, tr, nil, sv, &writer); err != nil {
+	if err := Sign(ctx, tr, sv, &writer); err != nil {
 		t.Fatalf("Sign() get err %v", err)
 	}
 
@@ -163,38 +163,6 @@ func TestSign_OCIBundle(t *testing.T) {
 	tr, signature := unmarshal(t, signed)
 
 	if err := trustedtask.VerifyTaskOCIBundle(ctx, tr.Spec.TaskRef.Bundle, sv, signature, k8sclient); err != nil {
-		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
-	}
-
-}
-
-func TestSign_TaskRef(t *testing.T) {
-	ctx := context.Background()
-
-	sv, err := trustedtask.GetSignerVerifier(password)
-	if err != nil {
-		t.Fatalf("error get signerverifier: %v", err)
-	}
-
-	tr := &v1beta1.TaskRun{
-		TypeMeta:   trTypeMeta,
-		ObjectMeta: trObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "test-task",
-			},
-		},
-	}
-
-	var writer bytes.Buffer
-	if err := Sign(ctx, tr, ts, sv, &writer); err != nil {
-		t.Fatalf("Sign() get err %v", err)
-	}
-
-	signed := writer.Bytes()
-	_, signature := unmarshal(t, signed)
-
-	if err := trustedtask.Verify(ctx, &ts.Spec, sv, signature); err != nil {
 		t.Fatalf("VerifyTaskOCIBundle get error: %v", err)
 	}
 

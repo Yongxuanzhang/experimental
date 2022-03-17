@@ -27,7 +27,10 @@ Prepare signed files
 ```bash
 # This is a demo of how to generate signed files.
 go run cmd/sign/main.go -pk=cosign.key -tr=examples/1-test-taskrun.yaml -td=examples
+<<<<<<< HEAD
 # go run cmd/sign/main.go -pk=cosign.key -tr=examples/3-test-taskrun-taskref.yaml -ts=examples/test_task.yaml -td=examples
+=======
+>>>>>>> signing-yaml
 ```
 
 Then install the new admission webhook:

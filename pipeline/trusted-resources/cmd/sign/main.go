@@ -38,12 +38,11 @@ import (
 var (
 	privateKey  = flag.String("pk", "", "cosign private key path")
 	taskRunFile = flag.String("tr", "", "YAML file path for tekton taskrun")
-	taskFile    = flag.String("ts", "", "YAML file path for tekton task")
 	targetDir   = flag.String("td", "", "Dir to save the signed files")
 	targetFile  = flag.String("tf", "signed.yaml", "Filename of the signed file")
 )
 
-// This is a demo of how to generate signed files, just for reference
+// This is a demo of how to generate signed files, note that api task ref is not supported yet.
 func main() {
 	ctx := context.Background()
 
@@ -66,42 +65,26 @@ func main() {
 		log.Fatalf("error getting signer: %v", err)
 	}
 
-	signature, err := trustedtask.Sign(signer, tr)
-	if err != nil {
-		log.Fatalf("error getting signature: %v", err)
-	}
-
-	if tr.Annotations == nil {
-		tr.Annotations = map[string]string{trustedtask.SignatureAnnotation: signature}
-	} else {
-		tr.Annotations[trustedtask.SignatureAnnotation] = signature
-	}
-
-	signedBuf, err := yaml.Marshal(tr)
-	if err != nil {
-		log.Fatalf("error marshalling taskrun: %v", err)
-	}
-
 	f, err := os.OpenFile(filepath.Join(*targetDir, *targetFile), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatalf("error opening output file: %v", err)
 	}
 	defer f.Close()
 
-	_, err = f.Write(signedBuf)
-	if err != nil {
-		log.Fatalf("error writing taskrun: %v", err)
+	// Sign the task and write to writer
+	if err := Sign(ctx, tr, signer, f); err != nil {
+		log.Fatalf("error signing taskrun: %v", err)
 	}
 
 }
 
 // TODO: The signing target will be changed in next PR, right now only sign taskspec
 // Sign the task and output task bytes to writer
-func Sign(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.Task, signer sigstore.Signer, writer io.Writer) error {
+func Sign(ctx context.Context, tr *v1beta1.TaskRun, signer sigstore.Signer, writer io.Writer) error {
 	var sig string
 	var err error
 	if tr.Spec.TaskSpec != nil {
-		sig, err = trustedtask.Sign(signer, tr.Spec.TaskSpec)
+		sig, err = trustedtask.SignInterface(signer, tr.Spec.TaskSpec)
 		if err != nil {
 			return err
 		}
@@ -117,12 +100,6 @@ func Sign(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.Task, signer sig
 			}
 
 			sig, err = trustedtask.SignRawPayload(signer, []byte(dig.String()))
-			if err != nil {
-				return err
-			}
-		}
-		if ts != nil {
-			sig, err = trustedtask.Sign(signer, &ts.Spec)
 			if err != nil {
 				return err
 			}

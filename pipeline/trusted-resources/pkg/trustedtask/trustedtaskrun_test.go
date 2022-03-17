@@ -140,7 +140,7 @@ func TestVerifyTaskRun_TaskRun(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: tr}
 
 	signed := unsigned.DeepCopy()
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, tr)
+	signed.Annotations[SignatureAnnotation], err = SignInterface(signer, tr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,7 +246,7 @@ func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 
 	signed.Annotations[SignatureAnnotation], err = SignRawPayload(signer, []byte(dig.String()))
 
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, otr)
+	signed.Annotations[SignatureAnnotation], err = SignInterface(signer, otr)
 
 	if err != nil {
 		t.Fatal(err)
@@ -312,7 +312,7 @@ func TestVerifyTaskRun_TaskRef(t *testing.T) {
 
 	signed := unsigned.DeepCopy()
 
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, ltr)
+	signed.Annotations[SignatureAnnotation], err = SignInterface(signer, ltr)
 
 	if err != nil {
 		t.Fatalf("Unexpected err %v", err)
@@ -351,7 +351,7 @@ func TestVerifyTaskRun_TaskRef(t *testing.T) {
 
 }
 
-func TestVerifyTaskSpec(t *testing.T) {
+func TestVerifyInterface(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
 	// get keys
@@ -392,7 +392,7 @@ func TestVerifyTaskSpec(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sig := ""
 			if tc.hasSignature {
-				sig, err = Sign(sv, taskSpecTest)
+				sig, err = SignInterface(sv, taskSpecTest)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -402,9 +402,9 @@ func TestVerifyTaskSpec(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			errs := Verify(ctx, tc.taskSpec, sv, signature)
+			errs := VerifyInterface(ctx, tc.taskSpec, sv, signature)
 			if (errs != nil) != tc.wantErr {
-				t.Fatalf("verifyTaskSpec() get err %v, wantErr %t", err, tc.wantErr)
+				t.Fatalf("VerifyInterface() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})
 	}

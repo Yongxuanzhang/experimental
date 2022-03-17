@@ -45,7 +45,7 @@ func TestVerifyTask_TaskRun(t *testing.T) {
 		signed.Annotations = map[string]string{}
 	}
 
-	signed.Annotations[SignatureAnnotation], err = Sign(signer, ts)
+	signed.Annotations[SignatureAnnotation], err = SignInterface(signer, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
