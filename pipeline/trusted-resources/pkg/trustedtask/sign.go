@@ -33,17 +33,10 @@ import (
 	"knative.dev/pkg/webhook/json"
 )
 
-<<<<<<< HEAD
-// TODO: change taskspec to inferface{} in next pr
-// Sign taskspec and return encoded signature
-func Sign(signer signature.Signer, taskspec interface{}) (string, error) {
-	b, err := json.Marshal(taskspec)
-=======
 // TODO: refactor this func in next pr
 // SignTaskSpec returns the encoded signature for the given TaskSpec.
 func SignInterface(signer signature.Signer, i interface{}) (string, error) {
 	b, err := json.Marshal(i)
->>>>>>> signing-yaml
 	if err != nil {
 		return "", err
 	}
