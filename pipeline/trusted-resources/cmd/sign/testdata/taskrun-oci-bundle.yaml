@@ -1,9 +1,0 @@
-kind: TaskRun
-apiVersion: tekton.dev/v1beta1
-metadata:
-  name: tr
-  namespace: tekton-trusted-resources-test
-spec:
-  taskRef:
-    name: ts
-    bundle: docker.io/user/task

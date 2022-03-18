@@ -1,9 +1,0 @@
-kind: Task
-apiVersion: tekton.dev/v1beta1
-metadata:
-  name: ts
-  namespace: tekton-trusted-resources-test
-spec:
-  steps:
-    - image: ubuntu
-      name: echo
