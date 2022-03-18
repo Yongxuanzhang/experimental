@@ -201,7 +201,6 @@ func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 		Data: map[string]string{"enable-tekton-oci-bundles": "true"},
 	}
 
-
 	_, err := k8sclient.CoreV1().ConfigMaps(nameSpace).Create(ctx, cm, metav1.CreateOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -219,8 +218,7 @@ func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 	u, _ := url.Parse(s.URL)
 
 	// Push OCI bundle
-	dig, err := pushOCIImage(t, u, ts)
-	if err != nil {
+	if _, err = pushOCIImage(t, u, ts); err != nil {
 		t.Fatal(err)
 	}
 
@@ -243,8 +241,6 @@ func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 	unsigned := &TrustedTaskRun{TaskRun: otr}
 
 	signed := unsigned.DeepCopy()
-
-	signed.Annotations[SignatureAnnotation], err = SignRawPayload(signer, []byte(dig.String()))
 
 	signed.Annotations[SignatureAnnotation], err = SignInterface(signer, otr)
 
@@ -277,7 +273,7 @@ func TestVerifyTaskRun_OCIBundle(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			cp := copyTrustedTaskRun(tc.taskRun)
-			if err := cp.verifyTaskRun(ctx, k8sclient, tektonClient);(err != nil) != tc.wantErr {
+			if err := cp.verifyTaskRun(ctx, k8sclient, tektonClient); (err != nil) != tc.wantErr {
 				t.Errorf("verifyResources() get err %v, wantErr %t", err, tc.wantErr)
 			}
 		})

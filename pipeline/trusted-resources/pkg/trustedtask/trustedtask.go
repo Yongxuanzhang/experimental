@@ -46,7 +46,7 @@ var (
 
 // Validate the Task is tampered or not.
 func (ts *TrustedTask) Validate(ctx context.Context) (errs *apis.FieldError) {
-	if !apis.IsInCreate(ctx){
+	if !apis.IsInCreate(ctx) {
 		return nil
 	}
 
@@ -59,7 +59,6 @@ func (ts *TrustedTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if err != nil {
 		return apis.ErrGeneric(err.Error())
 	}
-
 
 	cp := copyTrustedTask(ts)
 	if errs := errs.Also(cp.verifyTask(ctx, k8sclient, tektonClient)); errs != nil {
@@ -92,7 +91,7 @@ func (ts *TrustedTask) verifyTask(
 		return apis.ErrGeneric(err.Error(), "metadata")
 	}
 
-	delete(ts.ObjectMeta.Annotations, SignatureAnnotation);
+	delete(ts.ObjectMeta.Annotations, SignatureAnnotation)
 
 	verifier, err := verifier(ctx, ts.ObjectMeta.Annotations, k8sclient)
 	if err != nil {
@@ -108,18 +107,18 @@ func (ts *TrustedTask) verifyTask(
 }
 
 // copyTrustedTask will copy fields defined by users
-func copyTrustedTask(in *TrustedTask) TrustedTask{
+func copyTrustedTask(in *TrustedTask) TrustedTask {
 	c := TrustedTask{}
-	c.TypeMeta=in.TypeMeta
+	c.TypeMeta = in.TypeMeta
 	c.SetName(in.Name)
 	c.SetGenerateName(in.GenerateName)
 	c.SetNamespace(in.Namespace)
 	c.Labels = make(map[string]string)
-	for k,v := range in.Labels {
+	for k, v := range in.Labels {
 		c.Labels[k] = v
 	}
 	c.Annotations = make(map[string]string)
-	for k,v := range in.Annotations {
+	for k, v := range in.Annotations {
 		c.Annotations[k] = v
 	}
 	c.Spec = *in.Spec.DeepCopy()
