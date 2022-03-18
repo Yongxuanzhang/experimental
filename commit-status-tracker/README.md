@@ -51,74 +51,15 @@ The revision here should be the full commit SHA from the HEAD of a branch associ
 
 The annotations are:
 
-<table style="width=100%" border="1">
-  <tr>
-    <th>Name</th>
-    <th>Description</th>
-    <th>Required</th>
-    <th>Default</th>
-  </tr>
-  <tr>
-    <th>
-      tekton.dev/git-status
-    </th>
-    <td>
-      This indicates that this <code>PipelineRun</code> should trigger commit-status notifications.
-    </td>
-    <td><b>Yes</b></td>
-    <td></td>
-  </tr>
-  <tr>
-    <th>
-      tekton.dev/status-context
-    </th>
-    <td>
-      This is the <a href="https://developer.github.com/v3/repos/statuses/#create-a-status">context</a> that will be reported, you can require named contexts in your branch protection rules.
-    </td>
-    <td>No</td>
-    <td>"default"</td>
-  </tr>
-  <tr>
-    <th>
-      tekton.dev/status-description
-    </th>
-    <td>
-      This is used as the description of the context, not the commit.
-    </td>
-    <td>No</td>
-    <td>""</td>
-  </tr>
-  <tr>
-    <th>
-     tekton.dev/status-target-url
-    </th>
-    <td>
-      If provided, then this will be linked in the GitHub web UI, this could be used to link to logs or output.
-    </td>
-    <td>No</td>
-    <td>""</td>
-  </tr>
-  <tr>
-    <th>
-     tekton.dev/git-repo
-    </th>
-    <td>
-      If provided together with <i>tekton.dev/git-revision</i> detecting the git repository from PiplineResource is skipped and given repository url is used
-    </td>
-    <td>No</td>
-    <td></td>
-  </tr>
-  <tr>
-    <th>
-     tekton.dev/git-revision
-    </th>
-    <td>
-      If provided together with <i>tekton.dev/git-repo</i> detecting the git repository from PiplineResource is skipped and given commit sha is used
-    </td>
-    <td>No</td>
-    <td></td>
-  </tr>
-</table>
+| Name                          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Required | Default   |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|-----------|
+| tekton.dev/git-status         | This indicates that this <code>PipelineRun</code> should trigger commit-status notifications.                                                                                                                                                                                                                                                                                                                                                                                                                     | Yes      |           |
+| tekton.dev/status-context     | This is the [context](https://developer.github.com/v3/repos/statuses/#create-a-status) that will be reported, you can require named contexts in your branch protection rules.                                                                                                                                                                                                                                                                                                                                     | No       | "default" |
+| tekton.dev/status-description | This is used as the description of the context, not the commit.                                                                                                                                                                                                                                                                                                                                                                                                                                                   | No       | ""        |
+| tekton.dev/status-target-url  | If provided, then this will be linked in the GitHub web UI, this could be used to link to logs or output. You can use text/template templating syntax to generate URL and access the namespace and name of the pipelinerun. e.g. `https://dashboard.dogfooding.tekton.dev/#/namespaces/{{ .Namespace }}/pipelineruns/{{ .Name }}` for tekton dashboard or `https://console-openshift-console.apps-crc.testing/k8s/ns/{{ .Namespace }}/{{ .Group }}~{{ .Version }}~{{ .Kind }}/{{ .Name }}` for openshift-console. | No       | ""        |
+| tekton.dev/git-repo           | If provided together with <i>tekton.dev/git-revision</i> detecting the git repository from PiplineResource is skipped and given repository url is used                                                                                                                                                                                                                                                                                                                                                            | No       |           |
+| tekton.dev/git-revision       | If provided together with <i>tekton.dev/git-repo</i> detecting the git repository from PiplineResource is skipped and given commit sha is used                                                                                                                                                                                                                                                                                                                                                                    | No       |           |
+
 
 ## Detecting the Git Repository
 
@@ -170,12 +111,14 @@ certificate verification, do not use this if you don't need to.
 It's possible to provide an environment variable `STATUS_TRACKER_SECRET` to
 override the default secret name which is `commit-status-tracker-git-secret`.
 
+
+
 ## Prerequisites
 
-- [go][go_tool] version v1.13+.
+- [go][go_tool] version v1.16+.
 - [docker][docker_tool] version 17.03+
 - [kubectl][kubectl_tool] v1.11.3+
-- [operator-sdk][operator_sdk]
+- [operator-sdk][operator_sdk] v1.15
 - Access to a Kubernetes v1.11.3+ cluster
 
 ## Getting Started
@@ -201,18 +144,13 @@ $ go mod tidy
 Build the operator image and push it to a public registry, such as quay.io:
 
 ```
-$ export IMAGE=quay.io/example-inc/commit-status-tracker:v0.0.1
-$ operator-sdk build $IMAGE
-$ docker push $IMAGE
+$ make IMAGE=quay.io/example-inc/commit-status-tracker:v0.0.1 oci-push
 ```
 
 ### Using the image
 
 ```shell
-# Update the operator manifest to use the built image name (if you are performing these steps on OSX, see note below)
-$ sed -i 's|REPLACE_IMAGE|quay.io/example-inc/commit-status-tracker:v0.0.1|g' deploy/operator.yaml
-# On OSX use:
-$ sed -i "" 's|REPLACE_IMAGE|quay.io/example-inc/commit-status-tracker:v0.0.1|g' deploy/operator.yaml
+$ make IMAGE=quay.io/example-inc/commit-status-tracker:v0.0.1 bundle
 ```
 
 **NOTE** The `quay.io/example-inc/commit-status-tracker:v0.0.1` is an example. You should build and push the image for your repository.
@@ -228,19 +166,13 @@ $ kubectl apply -f kubectl apply -f https://github.com/tektoncd/pipeline/release
 And then you can install the statuses operator with:
 
 ```shell
-$ kubectl create -f deploy/service_account.yaml
-$ kubectl create -f deploy/role.yaml
-$ kubectl create -f deploy/role_binding.yaml
-$ kubectl create -f deploy/operator.yaml
+$ make IMAGE=quay.io/example-inc/commit-status-tracker:v0.0.1 deploy
 ```
 
 ### Uninstalling
 
 ```shell
-$ kubectl delete -f deploy/service_account.yaml
-$ kubectl delete -f deploy/role.yaml
-$ kubectl delete -f deploy/role_binding.yaml
-$ kubectl delete -f deploy/operator.yaml
+$ make IMAGE=quay.io/example-inc/commit-status-tracker:v0.0.1 undeploy
 ```
 
 ### Troubleshooting
@@ -248,13 +180,13 @@ $ kubectl delete -f deploy/operator.yaml
 Use the following command to check the operator logs.
 
 ```shell
-$ kubectl logs commit-status-tracker
+$ kubectl logs deployments/commit-status-tracker-controller-manager -n commit-status-tracker-system -c manager
 ```
 
 ### Running Tests
 
 ```shell
-$ go test -v ./...
+$ make test
 ```
 
 [go_tool]: https://golang.org/dl/
